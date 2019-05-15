@@ -84,3 +84,78 @@ iris %>%  group_by (Species) %>%
   mutate (mean_petal_length = mean (Petal.Length)) #it will create a mean for each species, not overall mean. So I can compare the Petal Length of one measurement with the overall mean for the species. 
 
 
+iris %>%  group_by(Species) %>% 
+  mutate (mean_petal_lengtj = mean (Petal.Length)) %>% 
+  ungroup() #remove the group structure. Sometimes you grouped your data for one analysis but you don´t want anymore, so you should ungroup the data frame. It is a tibble with no groups.The group we are removing is the species, in this case. 
+
+
+
+iris %>%  arrange (Petal.Length) #arranging by petal length
+iris %>%  arrange (desc(Petal.Length))# arranging by petal length from the higher values.
+
+iris %>% group_by(Species) %>%  arrange(Petal.Length)  #it will arrange by species and petal length
+  
+iris %>% group_by(Species) %>%  arrange(Petal.Length) %>%  slice (1:3) #it will show now the top three for each of the species. In this case it will give the top 3, but it could be the top 4 (1:4). 
+
+iris %>%  group_by(Species) %>%  arrange (desc(Petal.Length)) %>% slice (1:3) #not it is the same but I get the higherst Petal Length per species.
+
+iris %>%  group_by(Species) %>% nest() #took all the data for each species and created it´s on tibble, or groups based in Species. It is a powerful technique. 
+
+iris %>% 
+  group_by(Species) %>% 
+  nest() %>%  
+  mutate(mod = map(data, ~lm(Sepal.Length ~ Sepal.Width, data =. )))
+#mod stands for creating a model, a map that uses data and the function lm (linear model) that describes the relationship between Sepal.Length and Sepal.Width).
+
+iris %>% 
+  group_by(Species) %>% #we took all diferent species
+  nest() %>%  #we grouped our data by species
+  mutate(mod = map(data, ~lm(Sepal.Length ~ Sepal.Width, data =. ))) %>% #this map took each of this tibbles with this data, 50 rows of 4 colums. So it fits all the data in one of the species. One model for each species
+  mutate(coef = map(mod, broom::tidy)) %>% #It pulls the coefficient out of the model 
+  unnest (coef) 
+#In the end, for each species we will get the data. 
+
+
+####reshaping data####
+
+#make tidy data
+
+#gather, spread
+iris #there is one column for each variable in this dataset. Sometimes this is fine, sometimes it is not an useful structure. Many times in tidyverse, it expects the tidydata organization. 
+
+iris %>%
+  rownames_to_column()
+#it creates a column of row names, in this case, numeral. 
+
+iris %>%  
+  rownames_to_column() %>% 
+  gather(key = variable, value = measurement, -Species, -rowname ) #it will put the column names into one column and the data into another colum. Key is the colum name. That will take all column names and the data into the colum measurement, and I will exclude two colums, Species and Rowname; so I will have the colums Rowname, Species, Variable and Measurement.
+#Now I changed how my data looks like: I have 4 columns and 600 rows.
+
+
+iris %>%  
+  rownames_to_column() %>% 
+  gather(key = variable, value = measurement, -Species, -rowname ) %>% 
+  group_by(Species, variable) %>% 
+  summarise(mean = mean (measurement)) #made the data into a thin format and used a mean per variable and per species into a new column
+
+x11() #make it into a new window
+iris %>% 
+  rownames_to_column() %>% 
+  gather (key = variable, value = measurement, -Species, -rowname) %>% 
+  ggplot (aes(x=variable, y=measurement, fill=Species)) + geom_violin()
+#now I plotted it all. 
+
+
+####two table function#### 
+#I lost it!
+#left_join
+#full_join
+#semi_join
+#anti_join
+
+####n table functions### 
+#you have to tables and will put tem in top of eachother with bind_rows
+#you have to tables and it will put them side by side with bind_cols
+#the crossing function wont will be used.
+
