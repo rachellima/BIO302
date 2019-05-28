@@ -110,8 +110,9 @@ iris %>%
 iris %>% 
   group_by(Species) %>% #we took all diferent species
   nest() %>%  #we grouped our data by species
-  mutate(mod = map(data, ~lm(Sepal.Length ~ Sepal.Width, data =. ))) %>% #this map took each of this tibbles with this data, 50 rows of 4 colums. So it fits all the data in one of the species. One model for each species
+  mutate(mod = map(data, ~lm(Sepal.Length ~ Sepal.Width, data =. ))) %>% #mod is a new colum name. Map takes lists and process element by element. this map took each of this tibbles with this data, 50 rows of 4 colums. So it fits all the data in one of the species. One model for each species. . is the internal name of each section of data.
   mutate(coef = map(mod, broom::tidy)) %>% #It pulls the coefficient out of the model 
+  #broom is a usefull package that takes the models and makes into a data frame. 
   unnest (coef) 
 #In the end, for each species we will get the data. 
 
@@ -135,7 +136,7 @@ iris %>%
 
 iris %>%  
   rownames_to_column() %>% 
-  gather(key = variable, value = measurement, -Species, -rowname ) %>% 
+  gather(key = variable, kk = measurement, -Species, -rowname ) %>% 
   group_by(Species, variable) %>% 
   summarise(mean = mean (measurement)) #made the data into a thin format and used a mean per variable and per species into a new column
 

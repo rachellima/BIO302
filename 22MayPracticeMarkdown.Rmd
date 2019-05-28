@@ -1,0 +1,176 @@
+---
+title: "Practice"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#install.packages ('lmtest')
+#install.packages ('broom.mixed') - so our glance function works.
+library (lmtest)
+library (tidyverse)
+library (broom)
+library (nlme)
+library (broom.mixed)
+```
+
+Don´t have hashtags install.package on your markdown because it will install several times.
+
+#Spatial and temporal structure
+Richard J. Telford
+June 1, 2018
+
+1. Simulate a 100-observation autocorrelated timeseries with arima.sim, with a first order autoregressive coefficient of 0.5. Also make a time vector of 1:100
+
+
+2. Plot the data.
+We don´t use c because we just have one value. 
+```{r}
+Sim <- arima.sim (n=100, list(ar = 0.5))
+Sim
+plot(Sim)
+```
+
+
+3. Regress the timeseries against time with an OLS model. Does the model appear to be statistically significant?
+
+```{r}
+
+set.seed (42)
+dat <- tibble(
+  x = 1:100,
+  y = arima.sim (n= 100, list(ar = 0.5)))
+
+  mod <- lm (y ~ x, data = dat)
+  
+  anova (mod)
+  summary (mod)
+  
+  par(mfrow = c(2,2))
+  plot (mod)
+    
+    
+```
+
+
+4. Plot the model diagnostics, including an acf (autocorrelation function) and pacf (partial correlation functionof the residuals.
+
+```{r}
+acf(resid(mod))
+pacf (resid(mod))
+```
+
+
+5. Use the Durbin-Watson test to test the residuals for autocorrelation.
+
+DW = is less than two 
+
+```{r}
+
+dwtest(mod)
+```
+
+6. Fit a gls with an appropriate correlation structure. Is this a better model? How have the p-value and effect size changed?
+If I type summary for my model in the console, I will have a summarized. Run an anova between a gls with correlation and one gls without the correlation and I then use anova in BOTH to compare which one has a minor AIC, which means that they are more fit. 
+
+```{r}
+
+year <- time (Sim)
+fit.gls <- gls(Sim ~ year, correlation = corAR1())
+summary (fit.gls)
+
+no.correlation <- gls(Sim~year)
+summary (no.correlation)
+
+anova(fit.gls, no.correlation)
+
+```
+
+7. Repeat the above 1000 times and find how autocorrelation affects the distribution of the p-value and the effect size.
+
+Try to color code by significance
+Here, I run my model 1000, but my lm has a strong p on the left, as if it were significant; it tests several models and show me what is signifcant. 
+With the gls it is corrected, because it shouldn´t be significant, there is only noise, no relation.
+
+in line 108 I used tidy instead of glance, they are not necessarily replaceble but glance didnt work in the gls and I need the numbers it gives. Then I need to filter only for term x, because I don´t want my intercept. 
+
+A gls without any specification work as an lm, so that is why I used it. But gls retrieves some information that lm doesnt, so maybe it is useful to use gls. 
+
+```{r}
+
+rerun(.n=1000, tibble (x = 1:100, y= arima.sim (n=100, list (ar = 0.5)))) %>% 
+  map (~ lm(y~x, data = .)) %>% 
+  map_df (glance) %>% 
+  ggplot (aes(x=p.value)) + geom_histogram() 
+
+
+rerun(.n=1000, tibble (x = 1:100, y= arima.sim (n=100, list (ar = 0.5)))) %>% 
+  map (~ gls(y ~ x, data = ., correlation = corAR1())) %>% 
+  map_df (tidy) %>% filter(term == "x") %>% 
+  ggplot (aes(x=p.value)) + geom_histogram() 
+
+```
+
+
+8. Real data
+The built-in dataset LakeHuron has annual lake level data from 1885 to 1972 Load the data with the command data(LakeHuron)
+
+```{r}
+data (LakeHuron)
+```
+
+
+9. Plot the data.
+
+```{r}
+plot (LakeHuron)
+```
+
+
+10. Regress the LakeHuron lake level against year using a linear model. Is there a significant trend?
+
+First, if we retrieve the LakeHuron data we see just a column X with the depth values. But writing in the console, we have the information that this is a time series, year of start and end and we also know the frequency, which is one. From now, before creating a model, we need to create a tibble using tibble() and creating the x with the year(LakeHuron).
+Then, I created a lm and ran an ANOVA on it. 
+There is a significant trend. p-value: 3.545e-08
+
+```{r}
+LakeHuron <- tibble(depth = LakeHuron, year = time(LakeHuron))
+LakeHuron
+ Lake.mod <- lm ( depth ~ year, data = LakeHuron)
+  
+  anova (Lake.mod)
+  summary (Lake.mod)
+```
+
+
+11. Plot the autocorrelation and partial autocorrelation functions for the residuals from this regression. Interpret them.
+
+```{r}
+
+acf(resid(Lake.mod))
+pacf (resid(Lake.mod))
+
+```
+
+
+12. Fit an autoregressive models to the residuals. Compare the results with your interpretation of the PACF plot.
+
+How to interpretate the PACF. PACF is how my model should look like.
+
+First I separete the residuals of my model into a separate object and then I run the ar(Lake.res)
+
+```{r}
+
+Lake.res <- resid(Lake.mod)
+
+ar(Lake.res) 
+
+
+
+```
+
+
+13. Fit a gls model using a corAR1 correlation structure. Test if the correlation structure is necessary. Is the trend significant?
+
+14.Fit a gls model using a corARMA correlation structure with two AR terms. Is this model an improvement?
