@@ -174,3 +174,5 @@ ar(Lake.res)
 13. Fit a gls model using a corAR1 correlation structure. Test if the correlation structure is necessary. Is the trend significant?
 
 14.Fit a gls model using a corARMA correlation structure with two AR terms. Is this model an improvement?
+
+test
