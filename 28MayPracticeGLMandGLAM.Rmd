@@ -1,0 +1,220 @@
+---
+title: "GLM & GAM"
+author: "Richard J. Telford"
+date: "May 30, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library (tidyverse)
+library (lmtest)
+library (tidyverse)
+library (broom)
+library (nlme)
+library (broom.mixed)
+library (mgcv)
+```
+
+#Exercises GLM & GAM
+
+##Poisson GLM
+1. Import sorich.csv
+
+```{r}
+sorich <- read.csv("~/Project A1 BIO302/sorich.csv")
+
+
+```
+
+2. Fit a linear model for species richness against cover assuming a Normal distribution
+
+3. Study the diagnostic plots
+
+## lm doesnt assume anything else than normal
+
+```{r}
+
+sorich.lm <- lm (nsp ~ cover, data = sorich)
+anova (sorich.lm)
+summary (sorich.lm)
+plot (sorich.lm)
+```
+
+4. What distribution is the response?
+ 
+Number of species is count data, so distribution is Poisson.
+
+5. Do an appropriate analysis
+
+```{r}
+fit.sorich.glm <- glm(nsp ~ cover, data = sorich, family = poisson)
+anova (fit.sorich.glm)
+summary (fit.sorich.glm)
+plot (fit.sorich.glm)
+
+ggplot(cbind(sorich, fit = fitted(fit.sorich.glm)), aes(x = cover, y = nsp)) +
+  geom_point() +
+  geom_line(aes(y = fit), colour = "red")
+
+
+
+```
+
+6. Check for over-dispersion
+
+Anova gives that Residual Deviance is higher than the DF, which means that variance is to high, so there is a parameter that was not identified. 
+
+7. Interpret the results
+
+There more cover you have, the more number of species. If we fit a quasi model it will give a scale. 
+
+8. How does the width of the confidence interval at cover = 10 change when over-dispersion is allowed for
+
+```{r}
+(pred <- predict(fit.sorich.glm, newdata = data.frame(cover = 10), se.fit = TRUE))
+
+
+#estimate
+
+exp(pred$fit)
+
+#upper 95%ci
+exp(pred$fit + 1.96 * pred$se.fit)
+
+#lower 95%ci
+exp(pred$fit - 1.96 * pred$se.fit)
+
+#At cover 10 we have 2.19 and that is outside the confidence interval of 95%, which is from 7 to 10. 
+
+```
+
+Cover and grasherb as predictors. Number of species as response. For adding predictors, use +. 
+9. Do the grasses differ from the herb, i.e. include the factor grasherb and test its significance?
+
+By adding another predictor, the Resid.Dev is reduced (and as close to DF), so the overdispersion is reduced. But it still not enough.
+
+```{r}
+
+fit.herb.glm <- glm(nsp ~ grasherb + cover, data = sorich, family = poisson)
+anova (fit.herb.glm)
+summary (fit.herb.glm)
+plot (fit.herb.glm)
+
+ggplot(cbind(sorich, fit = fitted(fit.herb.glm)), aes(x = grasherb+ cover, y = nsp)) +
+  geom_point() +
+  geom_line(aes(y = grasherb+cover), colour = "red")
+
+anova (fit.sorich.glm)
+anova(fit.herb.glm)
+
+```
+
+
+
+## How much does over-dispersion affect results
+1. Use `sample()` to randomise the response in sorich to remove the relationship between the preictor and response.
+Sample reorders the vector. We took the column nsp and randomized. We use the dollar sign to indicate that is a colum inside the sorich. We randomized the nsp so we null the relationship between predictor and response.  
+
+```{r}
+
+random.sorich <- tibble (nsp = sample(sorich$nsp), cover = sorich$cover)
+random.sorich
+```
+
+
+2. Test if a Poisson GLM with cover as a predictor is significant.
+
+Since the response is random, it might or not be significant. 
+
+```{r}
+glm.random.sorich <- glm(nsp ~ cover, data = random.sorich, family = poisson)
+anova(glm.random.sorich)
+summary (glm.random.sorich)
+
+```
+
+
+3. Repeat 1000 times and find the distribution of p-values.
+Although the data is randomized, I found a significant relation and that is a proof of over dispersion.
+The function tidy also gives the intercept value, so I need to filter it out with filter(term =="cover"). With glance, on lm, I don´t need to do that.
+
+```{r}
+
+
+rerun(.n=1000, tibble (nsp = sample(sorich$nsp), cover = sorich$cover)) %>% 
+  map (~ glm(nsp~cover, data = ., family = poisson())) %>% 
+  map_df (tidy) %>%  filter(term == "cover") %>%
+  ggplot (aes(x=p.value)) + geom_histogram() 
+
+
+```
+
+
+## Binomial GAM
+
+1. Open library mgcv
+2. Import data pot.csv
+
+```{r}
+pot <- read.csv("~/Project A1 BIO302/pot.csv")
+pot
+```
+
+3. What type of distribution is the response variable?
+
+Binomial 
+
+4. What type of link-function do we use?
+
+Log function 
+
+5. Do an appropriate GLM analysis?
+The + I(alt^2) is quadratic, so it will make a curve. 
+
+```{r}
+
+pot.glm <- glm(potalp ~ alt + I(alt^2), data = pot, family = binomial)
+anova(pot.glm)
+summary (pot.glm)
+```
+
+
+6. Interpret the results?
+
+There is no over dispersion, observing residuals and DF.
+
+7. Do a GAM analysis
+
+```{r}
+pot.gam <- gam(potalp ~ s(alt), data = pot, family = binomial)
+anova (pot.gam)
+```
+
+
+8. Compare the GLM and GAM models.
+
+```{r}
+anova (pot.glm, pot.gam, test ="Chisq")
+summary (pot.glm)
+summary (pot.gam)
+
+ggplot(cbind(pot, fit.gam = fitted(pot.gam), fit.glm = fitted(pot.glm)), aes(alt, potalp)) +
+  geom_point() +
+  geom_line(aes(y = fit.gam, colour = "GAM")) +
+  geom_line(aes(y = fit.glm, colour = "GLM")) +
+  labs(x = "Elevation", y = "P. alpina", colour = "Model")
+
+```
+
+9. Which model would you prefer, and why?
+
+This was the ANOVA output: 
+
+Model 1: potalp ~ alt + I(alt^2)
+Model 2: potalp ~ s(alt)
+  Resid. Df Resid. Dev     Df Deviance Pr(>Chi)
+1    568.00     529.28                         
+2    565.94     525.35 2.0608   3.9306   0.1471
+
+the Pr (>Chi) shows that the models are not significantly different, so the choice should go to GLM. Although GAM has a easier plot to read, the GLM is easier to interpret the results and the coeficient, and to measure the highest point in the curve.
