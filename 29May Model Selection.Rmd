@@ -1,0 +1,143 @@
+---
+title: "Untitled"
+author: "Richard J. Telford"
+date: "June 8, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library (tidyverse)
+library (AICcmodavg)
+library (MASS)
+library (broom)
+
+```
+
+Exercise Diagnostics
+
+1. Import sorich.csv
+2. Fit a linear model for nsp as a function of cover
+3. Examine the diagnostics graphs. What suggests this may not be an appropriate model to fit?
+
+4. Import bird1.csv
+All character vectors are made into factors as a default. read_csv = leaves the data the way it is. (normally more usefull)
+read.csv = transform the treat column to factor. In this exercise it doesn't matter.
+```{r}
+
+data.bird <- read_csv("bird1.csv")
+data.bird
+```
+
+
+5. Fit a linear model for weight as a function of temp
+
+```{r}
+
+fit.bird.lm <- lm (weight ~ temp, data = data.bird)
+anova (fit.bird.lm)
+summary(fit.bird.lm)
+
+```
+
+
+6. Examine the diagnostics graphs. Do they indicate that any action needs to be taken.
+
+```{r}
+
+par(mfrow= c(2,2))
+plot(fit.bird.lm)
+
+```
+
+
+7. Fit a model that includes a quadratic term for temp 
+
+```{r}
+
+fit.bird.lm2 <- lm  (weight ~ temp + I(temp^2), data = data.bird)
+anova(fit.bird.lm2)
+summary (fit.bird.lm2)
+par(mfrow= c(2,2))
+plot(fit.bird.lm2)
+
+```
+
+
+
+8. Compare the diagnostics plots with those from the previous model. Comment on any changes.
+
+The residual vs fitted is closer to zero, 
+
+9. Extract the AIC from both  models (hint use function AIC). Which is the better model?
+I is the identity function. weight is the rs
+
+```{r}
+
+mods <- list()
+mods$mod1 <- lm (weight ~ temp, data = data.bird)
+mods$mod2 <- lm (weight ~ temp + I(temp^2), data = data.bird)
+
+sapply (mods, AIC)
+```
+
+
+10. Calculate the deltaAIC for each model
+
+```{r}
+aictab(mods)
+```
+
+Mod2 has a DeltaAIC of 0, so it is better. 
+
+
+11. Calculate the AIC weights for each model. Interpret these weights.
+
+Mod2 has AICcWt of 0.84, being better than the mod1, which has only 0.16.
+
+12. With the built-in data set `swiss` (use `data(swiss)`), make ols (Ordinary Least Squares = lm) model between Fertility and all other variables. Find the VIF(Variance inflation factor) of each predictor. Are there any problem variables?
+
+This function: olsrr::ols_vif_tol can be used.it means OLS_VIF_TOL in the packaged olsrr. So you don´t need to load the whole olsrr package, but just the function. That is why the :: is used. 
+
+```{r}
+data(swiss)
+swiss
+
+fit.swiss.lm <- lm(Fertility ~ Agriculture + Examination + Education + Catholic + Infant.Mortality, data = swiss)
+anova (fit.swiss.lm)
+summary (fit.swiss.lm)
+
+olsrr::ols_vif_tol(fit.swiss.lm)
+
+
+```
+
+"1 is no correlation
+Values above 10 maybe a cause for concern.
+Some argue for a VIF threshold of 3.
+The general rule of thumb is that VIFs exceeding 4 warrant further investigation, while VIFs exceeding 10 are signs of serious multicollinearity requiring correction."
+
+***Answer: Some argue that the VIF of 3 is a threshold for the variables, 1 means no multicollinearity. Examination should be dropped then. 
+
+13. Use `MASS::mvrnorm()` to simulate 100 observation of two predictor variables (x and z) with a given correlation. Simulate a response variable y = b0 + b1x + b2z. Test how the uncertainty in the coefficients changes with the correlation (and hence vif) of the predictor variables.
+0.9 was working
+0.99 fails
+
+I made the both variables important, but the model can´t tell it, sometimes it can detect that it is important, and sometimes it cannot.
+Very strongly correlated variables can generate problems and the model fails to estimate. 
+One would need more data that reduces the correlation will be useful. 
+
+```{r}
+
+Sigma <- matrix(c(1,0.99,0.99,1),2,2)
+Sigma
+Sigma1 <- (mvrnorm(n = 100, rep(0, 2), Sigma)) %>% as.data.frame() %>% rename (x = V1, z = V2) %>% mutate( y = x + z + rnorm (100))
+fit.sigma <- lm (y ~ x + z, data = Sigma1)
+tidy (fit.sigma) 
+
+olsrr::ols_vif_tol(fit.sigma)
+
+
+```
+
