@@ -121,12 +121,13 @@ The general rule of thumb is that VIFs exceeding 4 warrant further investigation
 ***Answer: Some argue that the VIF of 3 is a threshold for the variables, 1 means no multicollinearity. Examination should be dropped then. 
 
 13. Use `MASS::mvrnorm()` to simulate 100 observation of two predictor variables (x and z) with a given correlation. Simulate a response variable y = b0 + b1x + b2z. Test how the uncertainty in the coefficients changes with the correlation (and hence vif) of the predictor variables.
-0.9 was working
-0.99 fails
+
+0.9 strong correlation, but model was working. 
+0.99 strong correlation, model fails to detect it. 
 
 I made the both variables important, but the model can´t tell it, sometimes it can detect that it is important, and sometimes it cannot.
 Very strongly correlated variables can generate problems and the model fails to estimate. 
-One would need more data that reduces the correlation will be useful. 
+One would need more data that reduces the correlation - useful!
 
 ```{r}
 
