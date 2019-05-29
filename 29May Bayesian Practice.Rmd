@@ -1,0 +1,127 @@
+---
+title: "Bayesian Exercise"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### R Markdown
+Bayesian exercise 
+
+#### Question I) Build a Bayesian model that answers the question: What would the rate of sign-up be if method A was used on a larger number of people?
+The runif will take numbers in an uniform distribution. 
+n_draws: Will take the 10.000; it is more practical to do it like this, instead of using runif(10000), because if we want to change it, it will be less work. 
+
+```{r}
+#Number of random draws from the prior
+
+n_draws <- 10000 
+prior <- runif(n_draws)
+hist(prior) #it is always good to eyeball the prior to make sure it looks ok. 
+
+
+#Here we will define the generative model. Will do we use {} here? It will tell that everything inside it belongs together.
+generative_model <- function(size,  rate) {
+k <- rbinom (n = 1, size = size, prob = rate)
+return (k)
+}
+
+generative_model (size = 16, rate = 0.5)
+
+
+# Here you simulate data using the parameters from the prior and the #generative model 
+
+sim_data <- rep(NA, n_draws)
+for(i in 1: n_draws) {
+  sim_data [i] <- generative_model (size = 16, rate = prior [i])
+}
+
+# Here you filter off all drraws that do not match the data
+
+observed_data <- 6
+posterior <- prior [sim_data == observed_data]
+
+hist(posterior) #eyeball the posterior 
+length(posterior) #see that we got enough draws and those are the ones drawing in accordinly to our parameters.
+#there are no rules here, but you probably want ot aim for >1000 draws.
+
+
+median (posterior)
+quantile (posterior, c(0.025, 0.975))
+
+```
+
+
+Question II) What’s the probability that method A is better than telemarketing?
+So marketing just told us that the rate of sign-up would be 20% if salmon subscribers were snared by a telemarketing campaign instead (to us it’s very unclear where marketing got this very precise number from). So given the model and the data that we developed in the last question, what’s the probability that method A has a higher rate of sign-up than telemarketing?
+
+Hint 1: If you have a vector of samples representing a probability distribution, which you should have from the last question, calculating the amount of probability above a certain value is done by simply counting the number of samples above that value and dividing by the total number of samples.
+
+Hint 2: The answer to this question is a one-liner.
+
+Question III) If method A was used on 100 people what would be number of sign-ups?
+Hint 1: The answer is again not a single number but a distribution over probable number of sign-ups.
+
+Hint 2: As before, the binomial distribution is a good candidate for how many people that sign up out of the 100 possible.
+
+Hint 3: Make sure you don’t “throw away” uncertainty, for example by using a summary of the posterior distribution calculated in the first question. Use the full original posterior sample!
+
+Hint 4: The general patter when calculating “derivatives” of posterior samples is to go through the values one-by-one, and perform a transformation (say, plugging in the value in a binomial distribution), and collect the new values in a vector.
+
+Solutions (but this can be done in many ways)
+Question I
+n_draw <- 10000
+
+# Defining and drawing from the prior distribution
+prior_rate <- runif(n_draw, 0, 1)
+
+# Defining the generative model
+gen_model <- function(rate) {
+  subscribers <- rbinom(1, size = 16, prob = rate)
+  subscribers
+}
+
+# Simulating the data
+subscribers <- rep(NA, n_draw)
+for(i in 1:n_draw) {
+  subscribers[i] <- gen_model(prior_rate[i])
+}
+
+# Filtering out those parameter values that didn't result in the
+# data that we actually observed
+post_rate <- prior_rate[subscribers == 6]
+
+# Checking that there enough samples left
+length(post_rate)
+## [1] 578
+# Plotting and summarising the posterior.
+hist(post_rate, xlim = c(0, 1))
+
+
+mean(post_rate)
+## [1] 0.3862927
+quantile(post_rate, c(0.025, 0.975))
+##      2.5%     97.5% 
+## 0.1956573 0.6189745
+Question II
+sum(post_rate > 0.2) / length(post_rate)
+## [1] 0.9705882
+Question III
+# This can be done with a for loop
+singnups <- rep(NA, length(post_rate))
+for(i in 1:length(post_rate)) {
+  singnups[i] <- rbinom(n = 1, size = 100, prob = post_rate[i])
+}
+
+# But since rbinom is vectorized we can simply write it like this:
+signups <- rbinom(n = length(post_rate), size = 100, prob = post_rate)
+
+hist(signups, xlim = c(0, 100))
+
+
+quantile(signups, c(0.025, 0.975))
+##  2.5% 97.5% 
+##    18    62
+# So a decent guess is that is would be between 20 and 60 sign-ups.
