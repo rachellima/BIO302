@@ -135,9 +135,9 @@ Then, I created a lm and ran an ANOVA on it.
 There is a significant trend. p-value: 3.545e-08
 
 ```{r}
-LakeHuron <- tibble(depth = LakeHuron, year = time(LakeHuron))
-LakeHuron
- Lake.mod <- lm ( depth ~ year, data = LakeHuron)
+LakeHuron2 <- tibble(depth = LakeHuron, year = time(LakeHuron))
+LakeHuron2
+ Lake.mod <- lm ( depth ~ year, data = LakeHuron2)
   
   anova (Lake.mod)
   summary (Lake.mod)
